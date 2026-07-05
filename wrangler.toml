@@ -1,0 +1,16 @@
+name = "eat-today"
+main = "src/worker.js"
+compatibility_date = "2026-07-05"
+workers_dev = true
+preview_urls = true
+
+assets = { directory = "./public", binding = "ASSETS", not_found_handling = "single-page-application" }
+
+[[d1_databases]]
+binding = "DB"
+database_name = "eat-today-db"
+database_id = "a9cf04ec-d9b9-4621-854c-43945db3340b"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "eat-today-photos"
