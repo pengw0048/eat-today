@@ -383,6 +383,7 @@
       <div class="dish-heading">
         <div>
           <h1>${escapeHtml(dish.name)}</h1>
+          ${dish.tags.length ? `<div class="tag-row">${dish.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
         </div>
         <div class="row-actions">
           <button class="secondary" type="button" data-action="add-today-plan" data-id="${escapeAttr(dish.id)}">今天做</button>
@@ -914,6 +915,7 @@
     const dish = {
       id,
       name: form.elements.name.value.trim(),
+      tags: existing?.tags || [],
       method: form.elements.method.value.trim(),
       ingredients,
       sources,
@@ -1135,6 +1137,7 @@
     return {
       id: dish.id || makeId(),
       name: dish.name || "未命名菜",
+      tags: Array.isArray(dish.tags) ? dish.tags.map(String).filter(Boolean) : [],
       method: dish.method || "",
       ingredients: normalizeIngredients(dish.ingredients),
       sources: normalizeSources(dish.sources),

@@ -132,6 +132,7 @@ function normalizeDish(dish) {
   return {
     id: asString(dish.id) || crypto.randomUUID(),
     name: asString(dish.name) || "未命名菜",
+    tags: Array.isArray(dish.tags) ? dish.tags.map(asString).filter(Boolean) : [],
     method: asString(dish.method),
     ingredients: normalizeIngredients(dish.ingredients),
     sources: normalizeSources(dish.sources),
