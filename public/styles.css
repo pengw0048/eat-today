@@ -326,7 +326,6 @@ a:hover {
 
 .dish-card-main,
 .meta-line,
-.stat-item,
 .plan-copy,
 .shopping-item {
   min-width: 0;
@@ -432,29 +431,39 @@ a:hover {
   gap: 6px;
 }
 
-.stats-grid {
-  display: grid;
+.dish-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 18px;
 }
 
-.stat-item {
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 12px;
+.dish-title-row h1 {
+  margin-bottom: 0;
 }
 
-.stat-value {
-  display: block;
-  font-size: 1.25rem;
-  font-weight: 800;
+.rating-tag {
+  font-weight: 700;
 }
 
-.stat-label {
+.source-line {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.source-label {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.source-empty {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .section-block {
@@ -925,10 +934,6 @@ a:hover {
     position: static;
   }
 
-  .stats-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .inline-form,
   .plan-day {
     grid-template-columns: 1fr;
@@ -963,10 +968,6 @@ a:hover {
 
   .dialog-grid,
   .rating-picker {
-    grid-template-columns: 1fr;
-  }
-
-  .stats-grid {
     grid-template-columns: 1fr;
   }
 }

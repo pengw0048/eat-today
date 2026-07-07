@@ -378,11 +378,13 @@
 
   function renderDishDetail(dish) {
     const avg = averageRating(dish);
-    const latest = latestLog(dish);
     return `
       <div class="dish-heading">
         <div>
-          <h1>${escapeHtml(dish.name)}</h1>
+          <div class="dish-title-row">
+            <h1>${escapeHtml(dish.name)}</h1>
+            ${avg ? `<span class="tag rating-tag">${ratingLabel(avg)}</span>` : ""}
+          </div>
           ${dish.tags.length ? `<div class="tag-row">${dish.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}</div>` : ""}
         </div>
         <div class="row-actions">
@@ -390,25 +392,6 @@
           <button class="secondary" type="button" data-action="add-log" data-id="${escapeAttr(dish.id)}">记录</button>
           <button class="secondary" type="button" data-action="edit-dish" data-id="${escapeAttr(dish.id)}">编辑</button>
           <button class="danger" type="button" data-action="delete-dish" data-id="${escapeAttr(dish.id)}">删除</button>
-        </div>
-      </div>
-
-      <div class="stats-grid">
-        <div class="stat-item">
-          <span class="stat-value">${avg ? ratingLabel(avg) : "-"}</span>
-          <span class="stat-label">平均评分</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">${dish.logs.length}</span>
-          <span class="stat-label">做过次数</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">${dish.sources.length}</span>
-          <span class="stat-label">来源</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">${latest ? formatShortDate(latest.date) : "-"}</span>
-          <span class="stat-label">最近一次</span>
         </div>
       </div>
 
@@ -426,14 +409,14 @@
         <p class="method-text">${escapeHtml(dish.method || "未填写做法")}</p>
       </section>
 
-      <section class="section-block">
-        <h2>来源</h2>
+      <div class="source-line">
+        <span class="source-label">来源</span>
         ${
           dish.sources.length
             ? `<div class="tag-row">${dish.sources.map(renderSourceLink).join("")}</div>`
-            : `<div class="empty-state"><strong>未添加来源</strong></div>`
+            : `<span class="source-empty">未添加</span>`
         }
-      </section>
+      </div>
 
       <section class="section-block">
         <div class="panel-header">
@@ -696,6 +679,7 @@
     const isEdit = Boolean(dish);
     const draft = dish || {
       name: "",
+      tags: [],
       method: "",
       ingredients: [],
       sources: [],
@@ -713,6 +697,10 @@
               <div class="form-field full">
                 <label for="dishName">菜名</label>
                 <input id="dishName" name="name" value="${escapeAttr(draft.name)}" required />
+              </div>
+              <div class="form-field full">
+                <label for="dishTags">标签</label>
+                <input id="dishTags" name="tags" value="${escapeAttr((draft.tags || []).join(", "))}" placeholder="用逗号分隔多个标签" />
               </div>
               <div class="form-field full">
                 <label for="dishMethod">做法</label>
@@ -915,7 +903,7 @@
     const dish = {
       id,
       name: form.elements.name.value.trim(),
-      tags: existing?.tags || [],
+      tags: splitList(form.elements.tags.value),
       method: form.elements.method.value.trim(),
       ingredients,
       sources,
@@ -1091,7 +1079,7 @@
   }
 
   function searchableDishText(dish) {
-    return [dish.name, ...dish.ingredients, ...dish.sources, dish.method].join(" ");
+    return [dish.name, ...dish.tags, ...dish.ingredients, ...dish.sources, dish.method].join(" ");
   }
 
   async function init() {
@@ -1269,6 +1257,13 @@
 
   function readRows(form, name) {
     return Array.from(form.querySelectorAll(`[name="${name}"]`)).map((input) => input.value.trim());
+  }
+
+  function splitList(value) {
+    return value
+      .split(/[,，\n]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   function averageRating(dish) {
