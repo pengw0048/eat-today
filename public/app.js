@@ -3,7 +3,6 @@
   const UPLOAD_ENDPOINT = "/api/uploads";
   const app = document.querySelector("#app");
   const dialogHost = document.querySelector("#dialogHost");
-  const importFile = document.querySelector("#importFile");
 
   const defaultState = {
     version: 1,
@@ -108,17 +107,6 @@
       return;
     }
 
-    if (action === "export-data") {
-      exportData();
-      return;
-    }
-
-    if (action === "import-data") {
-      importFile.value = "";
-      importFile.click();
-      return;
-    }
-
     if (action === "close-dialog") {
       closeDialog();
       return;
@@ -194,9 +182,6 @@
       return;
     }
 
-    if (event.target === importFile) {
-      await importData(event.target.files?.[0]);
-    }
   });
 
   function render() {
@@ -227,8 +212,6 @@
             <div class="subtle">${ui.error ? escapeHtml(ui.error) : `${state.dishes.length} 个菜 · ${totalLogs()} 次记录 · ${state.fridge.length} 个冰箱食材`}</div>
           </div>
           <div class="top-actions">
-            <button class="secondary" type="button" data-action="import-data">导入</button>
-            <button class="secondary" type="button" data-action="export-data">导出</button>
             <button class="primary" type="button" data-action="new-dish">新增菜谱</button>
           </div>
         </header>
@@ -1208,37 +1191,6 @@
         render();
       });
     return saveQueue;
-  }
-
-  function exportData() {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `eat-today-${todayIso()}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  async function importData(file) {
-    if (!file) return;
-    const text = await file.text();
-    const parsed = JSON.parse(text);
-    if (!parsed || !Array.isArray(parsed.dishes)) {
-      window.alert("导入文件格式不正确");
-      return;
-    }
-    if (!window.confirm("导入会覆盖当前本地数据，继续？")) return;
-    state = {
-      ...structuredClone(defaultState),
-      ...parsed,
-      dishes: parsed.dishes.map(normalizeDish),
-      fridge: Array.isArray(parsed.fridge) ? parsed.fridge : [],
-      plan: Array.isArray(parsed.plan) ? parsed.plan : [],
-    };
-    ui.selectedDishId = state.dishes[0]?.id || null;
-    await saveState();
-    render();
   }
 
   function showDialog() {
