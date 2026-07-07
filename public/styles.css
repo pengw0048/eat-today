@@ -268,7 +268,6 @@ a:hover {
 .fridge-item,
 .suggestion-card,
 .source-row,
-.ingredient-row,
 .plan-day,
 .shopping-item {
   background: var(--surface);
@@ -365,6 +364,35 @@ a:hover {
   color: #25536d;
 }
 
+.tag-clickable {
+  border: 0;
+}
+
+.tag-clickable:hover {
+  background: #dcece2;
+}
+
+.removable-tag {
+  gap: 6px;
+  padding-right: 6px;
+}
+
+.tag-remove {
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  color: inherit;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  min-height: 0;
+  padding: 0 2px;
+}
+
+.tag-remove:hover {
+  background: rgba(37, 33, 27, 0.08);
+}
+
 .detail-panel,
 .panel {
   background: rgba(255, 255, 255, 0.56);
@@ -427,22 +455,6 @@ a:hover {
 .section-block h2 {
   font-size: 1.02rem;
   margin: 0 0 10px;
-}
-
-.ingredient-grid {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-}
-
-.ingredient-row {
-  padding: 10px 12px;
-}
-
-.amount {
-  color: var(--muted);
-  font-size: 0.88rem;
-  margin-right: 6px;
 }
 
 .source-list {
@@ -677,6 +689,22 @@ a:hover {
 .dynamic-list {
   display: grid;
   gap: 8px;
+}
+
+.tag-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tag-input-row input {
+  flex: 1;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .field-row {

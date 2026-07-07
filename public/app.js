@@ -124,11 +124,16 @@
       return;
     }
 
-    if (action === "add-ingredient-row") {
-      actionTarget
-        .closest("form")
-        .querySelector('[data-list="ingredients"]')
-        .insertAdjacentHTML("beforeend", ingredientRowTemplate());
+    if (action === "add-ingredient-tag") {
+      addIngredientTag(actionTarget.closest("form"));
+      return;
+    }
+
+    if (action === "filter-ingredient") {
+      ui.search = actionTarget.dataset.name || "";
+      ui.view = "recipes";
+      render();
+      document.querySelector("[data-search]")?.focus();
       return;
     }
 
@@ -170,6 +175,13 @@
     if (event.target.matches("[data-search]")) {
       ui.search = event.target.value;
       renderRecipesListOnly();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.target.matches("[data-ingredient-input]") && event.key === "Enter") {
+      event.preventDefault();
+      addIngredientTag(event.target.closest("form"));
     }
   });
 
@@ -363,7 +375,7 @@
         <h2>食材</h2>
         ${
           dish.ingredients.length
-            ? `<div class="ingredient-grid">${dish.ingredients.map(renderIngredient).join("")}</div>`
+            ? `<div class="tag-row">${dish.ingredients.map(renderIngredientTag).join("")}</div>`
             : `<div class="empty-state"><strong>未填写食材</strong></div>`
         }
       </section>
@@ -396,13 +408,11 @@
     `;
   }
 
-  function renderIngredient(ingredient) {
-    const amount = [ingredient.amount, ingredient.unit].filter(Boolean).join(" ");
+  function renderIngredientTag(name) {
     return `
-      <div class="ingredient-row">
-        ${amount ? `<span class="amount">${escapeHtml(amount)}</span>` : ""}
-        <strong>${escapeHtml(ingredient.name)}</strong>
-      </div>
+      <button class="tag tag-clickable" type="button" data-action="filter-ingredient" data-name="${escapeAttr(name)}">
+        ${escapeHtml(name)}
+      </button>
     `;
   }
 
@@ -513,10 +523,9 @@
       <div class="shopping-list">
         ${items
           .map(
-            (item) => `
+            (name) => `
               <div class="shopping-item">
-                <strong>${escapeHtml(item.name)}</strong>
-                <span class="subtle">${escapeHtml(item.displayAmount || "按需")}</span>
+                <strong>${escapeHtml(name)}</strong>
               </div>
             `,
           )
@@ -645,7 +654,7 @@
       category: "",
       tags: [],
       method: "",
-      ingredients: [{ amount: "", unit: "", name: "" }],
+      ingredients: [],
       sources: [{ type: "视频", title: "", url: "", notes: "" }],
     };
 
@@ -679,12 +688,13 @@
             <section>
               <div class="panel-header">
                 <span class="dialog-section-title">食材</span>
-                <button class="secondary" type="button" data-action="add-ingredient-row">添加食材</button>
               </div>
-              <div class="dynamic-list" data-list="ingredients">
-                ${(draft.ingredients.length ? draft.ingredients : [{ amount: "", unit: "", name: "" }])
-                  .map((ingredient) => ingredientRowTemplate(ingredient))
-                  .join("")}
+              <div class="tag-input-row">
+                <input type="text" data-ingredient-input placeholder="输入食材名称，按 Enter 或点击添加" />
+                <button class="secondary" type="button" data-action="add-ingredient-tag">添加</button>
+              </div>
+              <div class="tag-list" data-list="ingredients">
+                ${draft.ingredients.map((name) => ingredientTagTemplate(name)).join("")}
               </div>
             </section>
 
@@ -711,15 +721,33 @@
     showDialog();
   }
 
-  function ingredientRowTemplate(ingredient = { amount: "", unit: "", name: "" }) {
+  function ingredientTagTemplate(name) {
     return `
-      <div class="field-row" data-row>
-        <input name="ingredientAmount[]" value="${escapeAttr(ingredient.amount || "")}" placeholder="数量" />
-        <input name="ingredientUnit[]" value="${escapeAttr(ingredient.unit || "")}" placeholder="单位" />
-        <input name="ingredientName[]" value="${escapeAttr(ingredient.name || "")}" placeholder="食材" />
-        <button class="ghost" type="button" data-action="remove-row">删除</button>
-      </div>
+      <span class="tag removable-tag" data-row>
+        <input type="hidden" name="ingredientName[]" value="${escapeAttr(name)}" />
+        ${escapeHtml(name)}
+        <button class="tag-remove" type="button" data-action="remove-row" aria-label="删除食材">×</button>
+      </span>
     `;
+  }
+
+  function addIngredientTag(form) {
+    const input = form.querySelector("[data-ingredient-input]");
+    const name = input.value.trim();
+    if (!name) return;
+
+    const list = form.querySelector('[data-list="ingredients"]');
+    const existing = Array.from(list.querySelectorAll('input[name="ingredientName[]"]')).map((el) =>
+      el.value.toLowerCase(),
+    );
+    if (existing.includes(name.toLowerCase())) {
+      input.value = "";
+      return;
+    }
+
+    list.insertAdjacentHTML("beforeend", ingredientTagTemplate(name));
+    input.value = "";
+    input.focus();
   }
 
   function sourceRowTemplate(source = { type: "视频", title: "", url: "", notes: "" }) {
@@ -824,12 +852,7 @@
   function saveDishFromForm(form) {
     const id = form.dataset.id || makeId();
     const existing = state.dishes.find((dish) => dish.id === id);
-    const ingredients = readRows(form, "ingredientName[]").map((name, index) => ({
-      id: existing?.ingredients[index]?.id || makeId(),
-      amount: readRows(form, "ingredientAmount[]")[index] || "",
-      unit: readRows(form, "ingredientUnit[]")[index] || "",
-      name,
-    })).filter((ingredient) => ingredient.name);
+    const ingredients = Array.from(new Set(readRows(form, "ingredientName[]").filter(Boolean)));
 
     const sourceTypes = readRows(form, "sourceType[]");
     const sourceTitles = readRows(form, "sourceTitle[]");
@@ -973,51 +996,24 @@
 
   function buildShoppingList() {
     const fridgeNames = state.fridge.map((item) => normalize(item.name));
-    const buckets = new Map();
+    const seen = new Map();
 
     plannedDishes().forEach((dish) => {
-      dish.ingredients.forEach((ingredient) => {
-        if (!ingredient.name || fridgeNames.includes(normalize(ingredient.name))) return;
-        const key = `${normalize(ingredient.name)}|${normalize(ingredient.unit)}`;
-        const existing = buckets.get(key) || {
-          name: ingredient.name,
-          unit: ingredient.unit,
-          numericAmount: 0,
-          textAmounts: [],
-          hasNumeric: false,
-        };
-
-        const amount = Number(ingredient.amount);
-        if (ingredient.amount && Number.isFinite(amount)) {
-          existing.numericAmount += amount;
-          existing.hasNumeric = true;
-        } else if (ingredient.amount) {
-          existing.textAmounts.push(ingredient.amount);
-        }
-
-        buckets.set(key, existing);
+      dish.ingredients.forEach((name) => {
+        if (!name || fridgeNames.includes(normalize(name))) return;
+        const key = normalize(name);
+        if (!seen.has(key)) seen.set(key, name);
       });
     });
 
-    return Array.from(buckets.values())
-      .map((item) => {
-        const amounts = [];
-        if (item.hasNumeric) amounts.push(trimNumber(item.numericAmount));
-        amounts.push(...item.textAmounts);
-        const amountText = amounts.join(" + ");
-        return {
-          name: item.name,
-          displayAmount: [amountText, item.unit].filter(Boolean).join(" "),
-        };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, "zh-CN"));
   }
 
   function rankedDishesByFridge() {
     const fridgeNames = state.fridge.map((item) => normalize(item.name));
     return state.dishes
       .map((dish) => {
-        const ingredientNames = dish.ingredients.map((ingredient) => ingredient.name).filter(Boolean);
+        const ingredientNames = dish.ingredients.filter(Boolean);
         const matched = ingredientNames.filter((name) => fridgeNames.includes(normalize(name)));
         const missing = ingredientNames.filter((name) => !fridgeNames.includes(normalize(name)));
         const matchRatio = ingredientNames.length ? matched.length / ingredientNames.length : 0;
@@ -1056,7 +1052,7 @@
       dish.name,
       dish.category,
       ...dish.tags,
-      ...dish.ingredients.map((ingredient) => ingredient.name),
+      ...dish.ingredients,
       ...dish.sources.flatMap((source) => [source.title, source.url, source.notes]),
       dish.method,
     ].join(" ");
@@ -1108,12 +1104,27 @@
       category: dish.category || "",
       tags: Array.isArray(dish.tags) ? dish.tags : [],
       method: dish.method || "",
-      ingredients: Array.isArray(dish.ingredients) ? dish.ingredients : [],
+      ingredients: normalizeIngredients(dish.ingredients),
       sources: Array.isArray(dish.sources) ? dish.sources : [],
       logs: Array.isArray(dish.logs) ? dish.logs : [],
       createdAt: dish.createdAt || new Date().toISOString(),
       updatedAt: dish.updatedAt || new Date().toISOString(),
     };
+  }
+
+  function normalizeIngredients(list) {
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    const result = [];
+    for (const item of list) {
+      const name = String(typeof item === "string" ? item : item?.name || "").trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(name);
+    }
+    return result;
   }
 
   function saveState() {
@@ -1323,10 +1334,6 @@
       .trim()
       .toLowerCase()
       .replace(/\s+/g, "");
-  }
-
-  function trimNumber(value) {
-    return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
   }
 
   function makeId() {

@@ -135,7 +135,7 @@ function normalizeDish(dish) {
     category: asString(dish.category),
     tags: Array.isArray(dish.tags) ? dish.tags.map(asString).filter(Boolean) : [],
     method: asString(dish.method),
-    ingredients: Array.isArray(dish.ingredients) ? dish.ingredients.map(normalizeIngredient).filter((item) => item.name) : [],
+    ingredients: normalizeIngredients(dish.ingredients),
     sources: Array.isArray(dish.sources) ? dish.sources.map(normalizeSource).filter((item) => item.title || item.url || item.notes) : [],
     logs: Array.isArray(dish.logs) ? dish.logs.map(normalizeLog) : [],
     createdAt: asString(dish.createdAt) || new Date().toISOString(),
@@ -143,13 +143,19 @@ function normalizeDish(dish) {
   };
 }
 
-function normalizeIngredient(ingredient) {
-  return {
-    id: asString(ingredient.id) || crypto.randomUUID(),
-    amount: asString(ingredient.amount),
-    unit: asString(ingredient.unit),
-    name: asString(ingredient.name),
-  };
+function normalizeIngredients(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const item of list) {
+    const name = asString(typeof item === "string" ? item : item?.name);
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(name);
+  }
+  return result;
 }
 
 function normalizeSource(source) {
