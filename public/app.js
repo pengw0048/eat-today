@@ -278,7 +278,7 @@
       <button class="bubble" type="button" data-action="select-dish" data-id="${escapeAttr(dish.id)}">
         <span class="bubble-circle">
           ${photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(dish.name)}" />` : `<span class="bubble-placeholder">${escapeHtml(initialOf(dish.name))}</span>`}
-          ${avg ? `<span class="bubble-badge">${avg.toFixed(1)}</span>` : ""}
+          ${avg ? `<span class="bubble-badge">${ratingLabel(avg)}</span>` : ""}
         </span>
         <span class="bubble-name">${escapeHtml(dish.name)}</span>
       </button>
@@ -367,7 +367,7 @@
         <span class="dish-card-main">
           <span class="dish-name">${escapeHtml(dish.name)}</span>
           <span class="meta-line">
-            <span>${avg ? `${avg.toFixed(1)} 分` : "未评分"}</span>
+            <span>${avg ? ratingLabel(avg) : "未评分"}</span>
             <span>${dish.ingredients.length} 种食材</span>
             <span>${latest ? formatShortDate(latest.date) : "未做过"}</span>
           </span>
@@ -394,7 +394,7 @@
 
       <div class="stats-grid">
         <div class="stat-item">
-          <span class="stat-value">${avg ? avg.toFixed(1) : "-"}</span>
+          <span class="stat-value">${avg ? ratingLabel(avg) : "-"}</span>
           <span class="stat-label">平均评分</span>
         </div>
         <div class="stat-item">
@@ -480,7 +480,7 @@
         <div class="log-head">
           <div>
             <strong>${escapeHtml(formatDate(log.date))}</strong>
-            <span class="pill">${Number(log.rating || 0)} 分</span>
+            <span class="pill">${ratingLabel(log.rating)}</span>
           </div>
           <div class="row-actions">
             <button class="ghost" type="button" data-action="edit-log" data-dish-id="${escapeAttr(dish.id)}" data-id="${escapeAttr(log.id)}">编辑</button>
@@ -675,7 +675,7 @@
                   <div class="log-head">
                     <div>
                       <strong>${escapeHtml(log.dish.name)}</strong>
-                      <div class="subtle">${escapeHtml(formatDate(log.date))} · ${Number(log.rating || 0)} 分</div>
+                      <div class="subtle">${escapeHtml(formatDate(log.date))} · ${ratingLabel(log.rating)}</div>
                     </div>
                     <button class="ghost" type="button" data-action="select-dish" data-id="${escapeAttr(log.dish.id)}">查看</button>
                   </div>
@@ -845,15 +845,15 @@
                 <label for="logDate">日期</label>
                 <input id="logDate" name="date" type="date" value="${escapeAttr(log.date)}" required />
               </div>
-              <div class="form-field">
+              <div class="form-field full">
                 <label>评分</label>
                 <div class="rating-picker">
-                  ${[1, 2, 3, 4, 5]
+                  ${[5, 4, 3, 2, 1]
                     .map(
                       (rating) => `
                         <label>
                           <input type="radio" name="rating" value="${rating}" ${Number(log.rating) === rating ? "checked" : ""} />
-                          <span>${rating}</span>
+                          <span>${ratingLabel(rating)}</span>
                         </label>
                       `,
                     )
@@ -1272,6 +1272,19 @@
     if (!dish.logs.length) return 0;
     const total = dish.logs.reduce((sum, log) => sum + Number(log.rating || 0), 0);
     return total / dish.logs.length;
+  }
+
+  const RATING_LABELS = {
+    5: "夯爆了",
+    4: "顶",
+    3: "人上人",
+    2: "NPC",
+    1: "拉完了",
+  };
+
+  function ratingLabel(value) {
+    const rounded = Math.min(5, Math.max(1, Math.round(Number(value) || 0)));
+    return RATING_LABELS[rounded];
   }
 
   function latestLog(dish) {
