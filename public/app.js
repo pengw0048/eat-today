@@ -14,7 +14,7 @@
 
   let state = structuredClone(defaultState);
   let ui = {
-    view: "recipes",
+    view: "home",
     selectedDishId: null,
     search: "",
     loading: true,
@@ -137,11 +137,8 @@
       return;
     }
 
-    if (action === "add-source-row") {
-      actionTarget
-        .closest("form")
-        .querySelector('[data-list="sources"]')
-        .insertAdjacentHTML("beforeend", sourceRowTemplate());
+    if (action === "add-source-tag") {
+      addSourceTag(actionTarget.closest("form"));
       return;
     }
 
@@ -182,6 +179,11 @@
     if (event.target.matches("[data-ingredient-input]") && event.key === "Enter") {
       event.preventDefault();
       addIngredientTag(event.target.closest("form"));
+    }
+
+    if (event.target.matches("[data-source-input]") && event.key === "Enter") {
+      event.preventDefault();
+      addSourceTag(event.target.closest("form"));
     }
   });
 
@@ -231,6 +233,7 @@
           </div>
         </header>
         <nav class="tabbar" aria-label="主导航">
+          ${tabButton("home", "首页")}
           ${tabButton("recipes", "菜谱")}
           ${tabButton("plan", "一周菜单")}
           ${tabButton("fridge", "冰箱")}
@@ -247,7 +250,65 @@
     if (ui.view === "plan") return renderPlanView();
     if (ui.view === "fridge") return renderFridgeView();
     if (ui.view === "logs") return renderLogsView();
-    return renderRecipesView();
+    if (ui.view === "recipes") return renderRecipesView();
+    return renderHomeView();
+  }
+
+  function renderHomeView() {
+    const dishes = [...state.dishes].sort((a, b) => (averageRating(b) || 0) - (averageRating(a) || 0));
+    return `
+      <section class="home-hero">
+        <div class="home-hero-copy">
+          <p class="home-greeting">${escapeHtml(greetingText())}，今天想吃什么？</p>
+          <h1 class="home-title">Eat Today</h1>
+          <p class="home-tagline">把喜欢的味道都收进圆圈里 ✨</p>
+        </div>
+        <div class="home-stats">
+          <div class="home-stat"><span>${state.dishes.length}</span><small>道菜谱</small></div>
+          <div class="home-stat"><span>${totalLogs()}</span><small>次记录</small></div>
+          <div class="home-stat"><span>${state.fridge.length}</span><small>冰箱食材</small></div>
+        </div>
+      </section>
+      <section class="bubble-section">
+        <div class="panel-header">
+          <span class="panel-title">我的菜谱</span>
+          <button class="secondary" type="button" data-action="switch-view" data-view="recipes">查看全部</button>
+        </div>
+        ${
+          dishes.length
+            ? `<div class="bubble-grid">${dishes.map(renderDishBubble).join("")}</div>`
+            : `
+              <div class="empty-state">
+                <strong>还没有菜谱，先加一个吧</strong>
+                <button class="primary" type="button" data-action="new-dish">新增第一个菜</button>
+              </div>
+            `
+        }
+      </section>
+    `;
+  }
+
+  function renderDishBubble(dish) {
+    const avg = averageRating(dish);
+    const photo = latestPhoto(dish);
+    return `
+      <button class="bubble" type="button" data-action="select-dish" data-id="${escapeAttr(dish.id)}">
+        <span class="bubble-circle">
+          ${photo ? `<img src="${escapeAttr(photo)}" alt="${escapeAttr(dish.name)}" />` : `<span class="bubble-placeholder">${escapeHtml(initialOf(dish.name))}</span>`}
+          ${avg ? `<span class="bubble-badge">${avg.toFixed(1)}</span>` : ""}
+        </span>
+        <span class="bubble-name">${escapeHtml(dish.name)}</span>
+      </button>
+    `;
+  }
+
+  function greetingText() {
+    const hour = new Date().getHours();
+    if (hour < 5) return "夜深了";
+    if (hour < 11) return "早上好";
+    if (hour < 14) return "中午好";
+    if (hour < 18) return "下午好";
+    return "晚上好";
   }
 
   function tabButton(view, label) {
@@ -339,10 +400,6 @@
       <div class="dish-heading">
         <div>
           <h1>${escapeHtml(dish.name)}</h1>
-          <div class="tag-row">
-            ${dish.category ? `<span class="tag">${escapeHtml(dish.category)}</span>` : ""}
-            ${dish.tags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join("")}
-          </div>
         </div>
         <div class="row-actions">
           <button class="secondary" type="button" data-action="add-today-plan" data-id="${escapeAttr(dish.id)}">今天做</button>
@@ -389,7 +446,7 @@
         <h2>来源</h2>
         ${
           dish.sources.length
-            ? `<div class="source-list">${dish.sources.map(renderSource).join("")}</div>`
+            ? `<div class="tag-row">${dish.sources.map(renderSourceLink).join("")}</div>`
             : `<div class="empty-state"><strong>未添加来源</strong></div>`
         }
       </section>
@@ -416,18 +473,22 @@
     `;
   }
 
-  function renderSource(source) {
-    const url = safeUrl(source.url);
+  function renderSourceLink(rawUrl) {
+    const url = safeUrl(rawUrl);
+    if (!url) return "";
     return `
-      <div class="source-row">
-        <div>
-          <div class="source-type">${escapeHtml(source.type)}</div>
-          <strong>${escapeHtml(source.title || source.url || "未命名来源")}</strong>
-          ${source.notes ? `<div class="subtle">${escapeHtml(source.notes)}</div>` : ""}
-        </div>
-        ${url ? `<a class="secondary button-link" href="${escapeAttr(url)}" target="_blank" rel="noreferrer">打开</a>` : ""}
-      </div>
+      <a class="tag tag-clickable" href="${escapeAttr(url)}" target="_blank" rel="noreferrer">
+        ${escapeHtml(sourceLabel(url))}
+      </a>
     `;
+  }
+
+  function sourceLabel(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      return url;
+    }
   }
 
   function renderLogCard(log, dish) {
@@ -651,11 +712,9 @@
     const isEdit = Boolean(dish);
     const draft = dish || {
       name: "",
-      category: "",
-      tags: [],
       method: "",
       ingredients: [],
-      sources: [{ type: "视频", title: "", url: "", notes: "" }],
+      sources: [],
     };
 
     dialogHost.innerHTML = `
@@ -667,17 +726,9 @@
           </div>
           <div class="dialog-body">
             <div class="dialog-grid">
-              <div class="form-field">
+              <div class="form-field full">
                 <label for="dishName">菜名</label>
                 <input id="dishName" name="name" value="${escapeAttr(draft.name)}" required />
-              </div>
-              <div class="form-field">
-                <label for="dishCategory">分类</label>
-                <input id="dishCategory" name="category" value="${escapeAttr(draft.category || "")}" />
-              </div>
-              <div class="form-field full">
-                <label for="dishTags">标签</label>
-                <input id="dishTags" name="tags" value="${escapeAttr((draft.tags || []).join(", "))}" />
               </div>
               <div class="form-field full">
                 <label for="dishMethod">做法</label>
@@ -701,12 +752,13 @@
             <section>
               <div class="panel-header">
                 <span class="dialog-section-title">来源</span>
-                <button class="secondary" type="button" data-action="add-source-row">添加来源</button>
               </div>
-              <div class="dynamic-list" data-list="sources">
-                ${(draft.sources.length ? draft.sources : [{ type: "视频", title: "", url: "", notes: "" }])
-                  .map((source) => sourceRowTemplate(source))
-                  .join("")}
+              <div class="tag-input-row">
+                <input type="url" data-source-input placeholder="粘贴链接，按 Enter 或点击添加" />
+                <button class="secondary" type="button" data-action="add-source-tag">添加</button>
+              </div>
+              <div class="tag-list" data-list="sources">
+                ${draft.sources.map((url) => sourceTagTemplate(url)).join("")}
               </div>
             </section>
           </div>
@@ -750,18 +802,39 @@
     input.focus();
   }
 
-  function sourceRowTemplate(source = { type: "视频", title: "", url: "", notes: "" }) {
+  function sourceTagTemplate(url) {
     return `
-      <div class="field-row source-field-row" data-row>
-        <select name="sourceType[]">
-          ${["视频", "文章", "帖子", "其他"].map((type) => `<option value="${type}" ${source.type === type ? "selected" : ""}>${type}</option>`).join("")}
-        </select>
-        <input name="sourceTitle[]" value="${escapeAttr(source.title || "")}" placeholder="标题" />
-        <input name="sourceUrl[]" value="${escapeAttr(source.url || "")}" placeholder="链接" />
-        <button class="ghost" type="button" data-action="remove-row">删除</button>
-        <input class="source-note-row" name="sourceNotes[]" value="${escapeAttr(source.notes || "")}" placeholder="备注" />
-      </div>
+      <span class="tag removable-tag" data-row>
+        <input type="hidden" name="sourceUrl[]" value="${escapeAttr(url)}" />
+        ${escapeHtml(sourceLabel(url))}
+        <button class="tag-remove" type="button" data-action="remove-row" aria-label="删除链接">×</button>
+      </span>
     `;
+  }
+
+  function addSourceTag(form) {
+    const input = form.querySelector("[data-source-input]");
+    const raw = input.value.trim();
+    if (!raw) return;
+
+    const url = normalizeSourceUrl(raw);
+    if (!safeUrl(url)) {
+      window.alert("链接格式不正确");
+      return;
+    }
+
+    const list = form.querySelector('[data-list="sources"]');
+    const existing = Array.from(list.querySelectorAll('input[name="sourceUrl[]"]')).map((el) =>
+      el.value.toLowerCase(),
+    );
+    if (existing.includes(url.toLowerCase())) {
+      input.value = "";
+      return;
+    }
+
+    list.insertAdjacentHTML("beforeend", sourceTagTemplate(url));
+    input.value = "";
+    input.focus();
   }
 
   function openLogDialog(dishId, logId) {
@@ -853,26 +926,11 @@
     const id = form.dataset.id || makeId();
     const existing = state.dishes.find((dish) => dish.id === id);
     const ingredients = Array.from(new Set(readRows(form, "ingredientName[]").filter(Boolean)));
-
-    const sourceTypes = readRows(form, "sourceType[]");
-    const sourceTitles = readRows(form, "sourceTitle[]");
-    const sourceUrls = readRows(form, "sourceUrl[]");
-    const sourceNotes = readRows(form, "sourceNotes[]");
-    const sources = sourceTypes
-      .map((type, index) => ({
-        id: existing?.sources[index]?.id || makeId(),
-        type,
-        title: sourceTitles[index] || "",
-        url: normalizeSourceUrl(sourceUrls[index] || ""),
-        notes: sourceNotes[index] || "",
-      }))
-      .filter((source) => source.title || source.url || source.notes);
+    const sources = Array.from(new Set(readRows(form, "sourceUrl[]").filter(Boolean)));
 
     const dish = {
       id,
       name: form.elements.name.value.trim(),
-      category: form.elements.category.value.trim(),
-      tags: splitList(form.elements.tags.value),
       method: form.elements.method.value.trim(),
       ingredients,
       sources,
@@ -1048,14 +1106,7 @@
   }
 
   function searchableDishText(dish) {
-    return [
-      dish.name,
-      dish.category,
-      ...dish.tags,
-      ...dish.ingredients,
-      ...dish.sources.flatMap((source) => [source.title, source.url, source.notes]),
-      dish.method,
-    ].join(" ");
+    return [dish.name, ...dish.ingredients, ...dish.sources, dish.method].join(" ");
   }
 
   async function init() {
@@ -1101,11 +1152,9 @@
     return {
       id: dish.id || makeId(),
       name: dish.name || "未命名菜",
-      category: dish.category || "",
-      tags: Array.isArray(dish.tags) ? dish.tags : [],
       method: dish.method || "",
       ingredients: normalizeIngredients(dish.ingredients),
-      sources: Array.isArray(dish.sources) ? dish.sources : [],
+      sources: normalizeSources(dish.sources),
       logs: Array.isArray(dish.logs) ? dish.logs : [],
       createdAt: dish.createdAt || new Date().toISOString(),
       updatedAt: dish.updatedAt || new Date().toISOString(),
@@ -1123,6 +1172,21 @@
       if (seen.has(key)) continue;
       seen.add(key);
       result.push(name);
+    }
+    return result;
+  }
+
+  function normalizeSources(list) {
+    if (!Array.isArray(list)) return [];
+    const seen = new Set();
+    const result = [];
+    for (const item of list) {
+      const url = String(typeof item === "string" ? item : item?.url || "").trim();
+      if (!url) continue;
+      const key = url.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push(url);
     }
     return result;
   }
@@ -1320,13 +1384,6 @@
     return new Intl.DateTimeFormat("zh-CN", {
       weekday: "long",
     }).format(new Date(`${iso}T00:00:00`));
-  }
-
-  function splitList(value) {
-    return value
-      .split(/[,，\n]/)
-      .map((item) => item.trim())
-      .filter(Boolean);
   }
 
   function normalize(value) {

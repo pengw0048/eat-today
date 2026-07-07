@@ -132,11 +132,9 @@ function normalizeDish(dish) {
   return {
     id: asString(dish.id) || crypto.randomUUID(),
     name: asString(dish.name) || "未命名菜",
-    category: asString(dish.category),
-    tags: Array.isArray(dish.tags) ? dish.tags.map(asString).filter(Boolean) : [],
     method: asString(dish.method),
     ingredients: normalizeIngredients(dish.ingredients),
-    sources: Array.isArray(dish.sources) ? dish.sources.map(normalizeSource).filter((item) => item.title || item.url || item.notes) : [],
+    sources: normalizeSources(dish.sources),
     logs: Array.isArray(dish.logs) ? dish.logs.map(normalizeLog) : [],
     createdAt: asString(dish.createdAt) || new Date().toISOString(),
     updatedAt: asString(dish.updatedAt) || new Date().toISOString(),
@@ -158,14 +156,19 @@ function normalizeIngredients(list) {
   return result;
 }
 
-function normalizeSource(source) {
-  return {
-    id: asString(source.id) || crypto.randomUUID(),
-    type: asString(source.type) || "其他",
-    title: asString(source.title),
-    url: asString(source.url),
-    notes: asString(source.notes),
-  };
+function normalizeSources(list) {
+  if (!Array.isArray(list)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const item of list) {
+    const url = asString(typeof item === "string" ? item : item?.url);
+    if (!url) continue;
+    const key = url.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(url);
+  }
+  return result;
 }
 
 function normalizeLog(log) {

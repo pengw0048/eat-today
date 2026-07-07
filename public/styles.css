@@ -12,6 +12,16 @@
   --gold: #ba7a18;
   --shadow: 0 12px 32px rgba(37, 33, 27, 0.08);
   --radius: 8px;
+  --mint: #d9f0e4;
+  --mint-ink: #1f6e4c;
+  --sky: #daedf7;
+  --sky-ink: #1f5f81;
+  --peach: #ffe6d9;
+  --peach-ink: #a1502b;
+  --lavender: #ece3f8;
+  --lavender-ink: #5c4694;
+  --sun: #fff2d0;
+  --sun-ink: #90661a;
 }
 
 * {
@@ -777,6 +787,163 @@ a:hover {
   width: 1px;
 }
 
+.home-hero {
+  align-items: center;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(255, 214, 173, 0.55), transparent 42%),
+    radial-gradient(circle at 88% 12%, rgba(179, 229, 205, 0.55), transparent 45%),
+    radial-gradient(circle at 78% 88%, rgba(219, 205, 245, 0.5), transparent 45%),
+    linear-gradient(160deg, #fffaf3, #f2f7f4 60%, #eef4f8);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  padding: clamp(22px, 4vw, 40px);
+}
+
+.home-greeting {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0 0 6px;
+}
+
+.home-title {
+  background: linear-gradient(120deg, var(--tomato), var(--gold));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: clamp(2rem, 4vw, 2.9rem);
+  letter-spacing: 0.5px;
+  margin: 0 0 8px;
+}
+
+.home-tagline {
+  color: var(--muted);
+  margin: 0;
+}
+
+.home-stats {
+  display: flex;
+  gap: 14px;
+}
+
+.home-stat {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  min-width: 88px;
+  padding: 12px 16px;
+  text-align: center;
+}
+
+.home-stat span {
+  display: block;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.home-stat small {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.bubble-section {
+  margin-bottom: 24px;
+}
+
+.bubble-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px clamp(14px, 2.4vw, 28px);
+  justify-content: center;
+  padding: 6px 0 14px;
+}
+
+.bubble {
+  background: transparent;
+  border: 0;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  min-height: 0;
+  padding: 4px;
+  width: 108px;
+}
+
+.bubble:hover {
+  transform: translateY(-4px);
+}
+
+.bubble:hover .bubble-circle {
+  box-shadow: 0 14px 26px rgba(37, 33, 27, 0.16);
+}
+
+.bubble-circle {
+  aspect-ratio: 1;
+  background: var(--surface);
+  border: 3px solid var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 8px 18px rgba(37, 33, 27, 0.1);
+  overflow: hidden;
+  position: relative;
+  transition: box-shadow 160ms ease;
+  width: 96px;
+}
+
+.bubble-circle img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.bubble-placeholder {
+  align-items: center;
+  color: var(--tomato-dark);
+  display: flex;
+  font-size: 1.6rem;
+  font-weight: 800;
+  height: 100%;
+  justify-content: center;
+  width: 100%;
+}
+
+.bubble:nth-of-type(5n + 1) .bubble-circle { border-color: var(--mint); }
+.bubble:nth-of-type(5n + 1) .bubble-placeholder { background: var(--mint); color: var(--mint-ink); }
+.bubble:nth-of-type(5n + 2) .bubble-circle { border-color: var(--sky); }
+.bubble:nth-of-type(5n + 2) .bubble-placeholder { background: var(--sky); color: var(--sky-ink); }
+.bubble:nth-of-type(5n + 3) .bubble-circle { border-color: var(--peach); }
+.bubble:nth-of-type(5n + 3) .bubble-placeholder { background: var(--peach); color: var(--peach-ink); }
+.bubble:nth-of-type(5n + 4) .bubble-circle { border-color: var(--lavender); }
+.bubble:nth-of-type(5n + 4) .bubble-placeholder { background: var(--lavender); color: var(--lavender-ink); }
+.bubble:nth-of-type(5n + 5) .bubble-circle { border-color: var(--sun); }
+.bubble:nth-of-type(5n + 5) .bubble-placeholder { background: var(--sun); color: var(--sun-ink); }
+
+.bubble-badge {
+  background: var(--tomato);
+  border-radius: 999px;
+  bottom: -2px;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  position: absolute;
+  right: -2px;
+}
+
+.bubble-name {
+  color: var(--ink);
+  font-size: 0.86rem;
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (max-width: 980px) {
   .split,
   .plan-layout,
@@ -802,9 +969,14 @@ a:hover {
   .topbar,
   .dish-heading,
   .fridge-main,
-  .suggestion-head {
+  .suggestion-head,
+  .home-hero {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .home-stats {
+    justify-content: center;
   }
 
   .top-actions,
