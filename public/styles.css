@@ -277,7 +277,6 @@ a:hover {
 .log-card,
 .fridge-item,
 .suggestion-card,
-.source-row,
 .plan-day,
 .shopping-item {
   background: var(--surface);
@@ -465,25 +464,6 @@ a:hover {
 .section-block h2 {
   font-size: 1.02rem;
   margin: 0 0 10px;
-}
-
-.source-list {
-  display: grid;
-  gap: 8px;
-}
-
-.source-row {
-  align-items: center;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: 10px 12px;
-}
-
-.source-type {
-  color: var(--blue);
-  font-size: 0.78rem;
-  font-weight: 800;
 }
 
 .method-text,
@@ -696,11 +676,6 @@ a:hover {
   font-weight: 700;
 }
 
-.dynamic-list {
-  display: grid;
-  gap: 8px;
-}
-
 .tag-input-row {
   display: flex;
   gap: 8px;
@@ -715,20 +690,6 @@ a:hover {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-}
-
-.field-row {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: minmax(70px, 0.5fr) minmax(70px, 0.5fr) minmax(160px, 1.2fr) auto;
-}
-
-.source-field-row {
-  grid-template-columns: 110px minmax(160px, 1fr) minmax(180px, 1fr) auto;
-}
-
-.source-note-row {
-  grid-column: 1 / -1;
 }
 
 .rating-picker {
@@ -878,7 +839,7 @@ a:hover {
 }
 
 .bubble:hover .bubble-circle {
-  box-shadow: 0 14px 26px rgba(37, 33, 27, 0.16);
+  box-shadow: 0 14px 28px rgba(185, 71, 50, 0.14), 0 4px 10px rgba(37, 33, 27, 0.06);
 }
 
 .bubble-circle {
@@ -922,15 +883,24 @@ a:hover {
 .bubble:nth-of-type(5n + 5) .bubble-placeholder { background: var(--sun); color: var(--sun-ink); }
 
 .bubble-badge {
-  background: var(--tomato);
-  border-radius: 999px;
-  bottom: -2px;
+  align-items: center;
+  background: rgba(37, 33, 27, 0.32);
+  border-radius: 50%;
+  bottom: 0;
   color: #fff;
-  font-size: 0.68rem;
+  display: flex;
+  font-size: 1rem;
   font-weight: 800;
-  padding: 2px 6px;
+  inset: 0;
+  justify-content: center;
+  opacity: 0;
   position: absolute;
-  right: -2px;
+  transition: opacity 160ms ease;
+}
+
+.bubble:hover .bubble-badge,
+.bubble:focus-visible .bubble-badge {
+  opacity: 1;
 }
 
 .bubble-name {
@@ -992,13 +962,7 @@ a:hover {
   }
 
   .dialog-grid,
-  .field-row,
-  .source-field-row,
   .rating-picker {
-    grid-template-columns: 1fr;
-  }
-
-  .source-row {
     grid-template-columns: 1fr;
   }
 
