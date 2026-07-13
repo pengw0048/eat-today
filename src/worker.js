@@ -123,7 +123,7 @@ function normalizeState(value) {
   return {
     version: 1,
     dishes: Array.isArray(state.dishes) ? state.dishes.map(normalizeDish) : [],
-    fridge: Array.isArray(state.fridge) ? state.fridge.map(normalizeFridgeItem) : [],
+    fridge: Array.isArray(state.fridge) ? state.fridge.map(normalizeFridgeItem).filter((item) => item.name) : [],
     plan: Array.isArray(state.plan) ? state.plan.map(normalizePlanItem).filter(Boolean) : [],
   };
 }
@@ -185,13 +185,16 @@ function normalizeLog(log) {
 }
 
 function normalizeFridgeItem(item) {
+  if (typeof item === "string") {
+    return {
+      id: crypto.randomUUID(),
+      name: asString(item),
+    };
+  }
+
   return {
-    id: asString(item.id) || crypto.randomUUID(),
-    amount: asString(item.amount),
-    unit: asString(item.unit),
-    name: asString(item.name),
-    expires: asString(item.expires),
-    createdAt: asString(item.createdAt) || new Date().toISOString(),
+    id: asString(item?.id) || crypto.randomUUID(),
+    name: asString(item?.name),
   };
 }
 

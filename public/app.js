@@ -15,6 +15,7 @@
   let ui = {
     view: "home",
     selectedDishId: null,
+    targetDishId: null,
     search: "",
     loading: true,
     error: "",
@@ -54,6 +55,7 @@
 
     if (action === "select-dish") {
       ui.selectedDishId = id;
+      ui.targetDishId = id;
       ui.view = "recipes";
       render();
       return;
@@ -182,6 +184,10 @@
       return;
     }
 
+    if (event.target.matches("[data-target-dish]")) {
+      ui.targetDishId = event.target.value;
+      render();
+    }
   });
 
   function render() {
@@ -564,6 +570,7 @@
 
   function renderFridgeView() {
     const suggestions = rankedDishesByFridge();
+    const targetDish = getTargetDish();
     return `
       <div class="fridge-layout">
         <section class="panel">
@@ -572,10 +579,7 @@
             <span class="subtle">${state.fridge.length} 项</span>
           </div>
           <form class="inline-form" data-form="fridge">
-            <input name="amount" placeholder="数量" />
-            <input name="unit" placeholder="单位" />
-            <input name="name" placeholder="食材" required />
-            <input name="expires" type="date" />
+            <input name="name" placeholder="食材名称" required />
             <button class="primary" type="submit">添加</button>
           </form>
           ${
@@ -585,30 +589,87 @@
           }
         </section>
         <aside class="panel">
-          <div class="panel-header">
-            <span class="panel-title">适合现在做</span>
-          </div>
-          ${
-            suggestions.length
-              ? `<div class="suggestion-list">${suggestions.slice(0, 8).map(renderSuggestion).join("")}</div>`
-              : `<div class="empty-state"><strong>还没有可推荐的菜</strong></div>`
-          }
+          <section class="fridge-check">
+            <div class="panel-header">
+              <span class="panel-title">想做什么</span>
+            </div>
+            ${renderTargetDishCheck(targetDish)}
+          </section>
+          <section class="section-block">
+            <div class="panel-header">
+              <span class="panel-title">适合现在做</span>
+            </div>
+            ${
+              suggestions.length
+                ? `<div class="suggestion-list">${suggestions.slice(0, 8).map(renderSuggestion).join("")}</div>`
+                : `<div class="empty-state"><strong>还没有可推荐的菜</strong></div>`
+            }
+          </section>
         </aside>
       </div>
     `;
   }
 
   function renderFridgeItem(item) {
-    const amount = [item.amount, item.unit].filter(Boolean).join(" ");
     return `
       <div class="fridge-item">
         <div class="fridge-main">
-          <div>
-            <strong>${escapeHtml(item.name)}</strong>
-            <div class="subtle">${escapeHtml(amount || "按需")}${item.expires ? ` · ${escapeHtml(formatShortDate(item.expires))}` : ""}</div>
-          </div>
+          <strong>${escapeHtml(item.name)}</strong>
           <button class="ghost" type="button" data-action="remove-fridge" data-id="${escapeAttr(item.id)}">移除</button>
         </div>
+      </div>
+    `;
+  }
+
+  function renderTargetDishCheck(dish) {
+    if (!state.dishes.length) {
+      return `<div class="empty-state"><strong>先添加菜谱</strong></div>`;
+    }
+
+    const { missing, matched } = splitIngredientsByFridge(dish);
+    return `
+      <div class="target-dish-check">
+        <select class="plan-select" data-target-dish>
+          ${state.dishes
+            .map(
+              (item) => `
+                <option value="${escapeAttr(item.id)}" ${dish?.id === item.id ? "selected" : ""}>
+                  ${escapeHtml(item.name)}
+                </option>
+              `,
+            )
+            .join("")}
+        </select>
+        ${
+          dish.ingredients.length
+            ? renderMissingIngredients(missing, matched)
+            : `<div class="empty-state"><strong>这个菜还没写食材</strong></div>`
+        }
+      </div>
+    `;
+  }
+
+  function renderMissingIngredients(missing, matched) {
+    if (!missing.length) {
+      return `
+        <div class="empty-state">
+          <strong>冰箱里都有</strong>
+          <span>${matched.length ? "可以直接做" : "没有需要检查的食材"}</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="shopping-list">
+        ${missing
+          .map(
+            (name) => `
+              <div class="shopping-item">
+                <strong>${escapeHtml(name)}</strong>
+              </div>
+            `,
+          )
+          .join("")}
       </div>
     `;
   }
@@ -921,6 +982,7 @@
     }
 
     ui.selectedDishId = id;
+    ui.targetDishId = id;
     saveState();
     closeDialog();
     render();
@@ -968,11 +1030,7 @@
 
     state.fridge.unshift({
       id: makeId(),
-      amount: form.elements.amount.value.trim(),
-      unit: form.elements.unit.value.trim(),
       name,
-      expires: form.elements.expires.value,
-      createdAt: new Date().toISOString(),
     });
 
     form.reset();
@@ -1026,12 +1084,11 @@
   }
 
   function buildShoppingList() {
-    const fridgeNames = state.fridge.map((item) => normalize(item.name));
     const seen = new Map();
 
     plannedDishes().forEach((dish) => {
       dish.ingredients.forEach((name) => {
-        if (!name || fridgeNames.includes(normalize(name))) return;
+        if (!name || hasFridgeIngredient(name)) return;
         const key = normalize(name);
         if (!seen.has(key)) seen.set(key, name);
       });
@@ -1041,12 +1098,10 @@
   }
 
   function rankedDishesByFridge() {
-    const fridgeNames = state.fridge.map((item) => normalize(item.name));
     return state.dishes
       .map((dish) => {
-        const ingredientNames = dish.ingredients.filter(Boolean);
-        const matched = ingredientNames.filter((name) => fridgeNames.includes(normalize(name)));
-        const missing = ingredientNames.filter((name) => !fridgeNames.includes(normalize(name)));
+        const { matched, missing } = splitIngredientsByFridge(dish);
+        const ingredientNames = [...matched, ...missing];
         const matchRatio = ingredientNames.length ? matched.length / ingredientNames.length : 0;
         const ratingBonus = (averageRating(dish) || 3) / 5;
         const recencyPenalty = cookedWithinDays(dish, 3) ? 0.45 : 0;
@@ -1059,6 +1114,23 @@
       })
       .filter((result) => result.dish.ingredients.length || result.score > 0)
       .sort((a, b) => b.score - a.score || a.missing.length - b.missing.length);
+  }
+
+  function getTargetDish() {
+    return state.dishes.find((dish) => dish.id === ui.targetDishId) || getSelectedDish();
+  }
+
+  function splitIngredientsByFridge(dish) {
+    const ingredients = (dish?.ingredients || []).filter(Boolean);
+    return {
+      matched: ingredients.filter((name) => hasFridgeIngredient(name)),
+      missing: ingredients.filter((name) => !hasFridgeIngredient(name)),
+    };
+  }
+
+  function hasFridgeIngredient(name) {
+    const target = normalize(name);
+    return Boolean(target) && state.fridge.some((item) => normalize(item.name) === target);
   }
 
   function plannedDishes() {
@@ -1087,6 +1159,7 @@
     try {
       state = await loadState();
       ui.selectedDishId = state.dishes[0]?.id || null;
+      ui.targetDishId = ui.selectedDishId;
       ui.error = "";
     } catch {
       state = structuredClone(defaultState);
@@ -1113,7 +1186,7 @@
         ...structuredClone(defaultState),
         ...parsed,
         dishes: parsed.dishes.map(normalizeDish),
-        fridge: Array.isArray(parsed.fridge) ? parsed.fridge : [],
+        fridge: Array.isArray(parsed.fridge) ? parsed.fridge.map(normalizeFridgeItem).filter((item) => item.name) : [],
         plan: Array.isArray(parsed.plan) ? parsed.plan : [],
       };
     } catch {
@@ -1132,6 +1205,20 @@
       logs: Array.isArray(dish.logs) ? dish.logs : [],
       createdAt: dish.createdAt || new Date().toISOString(),
       updatedAt: dish.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  function normalizeFridgeItem(item) {
+    if (typeof item === "string") {
+      return {
+        id: makeId(),
+        name: item.trim(),
+      };
+    }
+
+    return {
+      id: item?.id || makeId(),
+      name: String(item?.name || "").trim(),
     };
   }
 

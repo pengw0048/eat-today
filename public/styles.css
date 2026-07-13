@@ -578,8 +578,13 @@ a:hover {
 .inline-form {
   display: grid;
   gap: 8px;
-  grid-template-columns: minmax(80px, 0.7fr) minmax(64px, 0.5fr) minmax(120px, 1fr) minmax(130px, 0.8fr) auto;
+  grid-template-columns: minmax(180px, 1fr) auto;
   margin-bottom: 14px;
+}
+
+.target-dish-check {
+  display: grid;
+  gap: 10px;
 }
 
 .fridge-item,
